@@ -1,19 +1,30 @@
-import { Duration, Stack, StackProps } from 'aws-cdk-lib';
-import * as sns from 'aws-cdk-lib/aws-sns';
-import * as subs from 'aws-cdk-lib/aws-sns-subscriptions';
-import * as sqs from 'aws-cdk-lib/aws-sqs';
+import { Stack, StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as apigw from 'aws-cdk-lib/aws-apigateway';
+import { Code } from 'aws-cdk-lib/aws-lambda';
+
+require('dotenv').config();
 
 export class CdkFootballStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
-    const queue = new sqs.Queue(this, 'CdkFootballQueue', {
-      visibilityTimeout: Duration.seconds(300)
+    // Add lambda resource
+    const football = new lambda.Function(this, 'FootballHandler', {
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'football.handler',
+      code: Code.fromAsset('lambda'),
+      environment: {
+        FOOTBALL_API_URL: process.env.FOOTBALL_API_URL!,
+        API_KEY: process.env.X_API_KEY!
+      }
     });
 
-    const topic = new sns.Topic(this, 'CdkFootballTopic');
+    // add Api Gateway resource
+    new apigw.LambdaRestApi(this, 'Endpoint', {
+      handler: football
+    })
 
-    topic.addSubscription(new subs.SqsSubscription(queue));
   }
 }
